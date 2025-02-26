@@ -1,33 +1,47 @@
-name: Deploy to DEV
+name: Manual Deploy to GitHub Pages
 
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to deploy'
+        description: "Select Branch to Deploy"
         required: true
-        default: 'main'
+        default: "main"
+        type: choice
+        options:
+          - main
+          - ui-features
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout Selected Branch
+        uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.branch }}
-          token: ${{ secrets.GH_TOKEN }}
+          ref: ${{ inputs.branch }}
 
-      - name: Install dependencies
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
         run: npm install
 
-      - name: Build project
-        run: npm run build
+      - name: Build React App
+        run: |
+          if [ "${{ inputs.branch }}" == "ui-features" ]; then
+            npm run build
+            mv build ui-features
+          else
+            npm run build
+          fi
 
       - name: Deploy to GitHub Pages
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          npm install -g gh-pages
-          gh-pages -d build -r https://$GH_TOKEN@github.com/${{ github.repository }}
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: ${{ inputs.branch == 'ui-features' && 'ui-features' || 'build' }}
+          clean: true
